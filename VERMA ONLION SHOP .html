@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="hi" class="h-full bg-slate-900 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyber Print Pro - Self Service Kiosk & Photo Crop Tool</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Cropper.js CSS & JS for Image Cropping -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'Noto Sans Devanagari', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .gradient-border {
+            background: linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%);
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+        .cropper-container {
+            max-height: 420px !important;
+            background-color: #0f172a !important;
+        }
+    </style>
+</head>
+<body class="h-full font-sans antialiased bg-slate-900 text-slate-100 flex flex-col">
+
+    <header class="bg-slate-800/80 backdrop-blur border-b border-slate-700/60 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <div class="p-2.5 bg-gradient-to-tr from-sky-500 to-indigo-600 rounded-xl shadow-lg shadow-sky-500/20 text-white">
+                        <i class="fa-solid fa-print text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-lg leading-none tracking-wide text-white">Cyber PrintExpress</h1>
+                        <p class="text-xs text-slate-400 mt-1" id="lbl-tagline">सेल्फ़-सर्विस प्रिंटिंग एवं फोटो क्रॉप कियोस्क</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <button id="langToggleBtn" onclick="toggleLanguage()" class="px-3 py-1.5 bg-slate-700/60 hover:bg-slate-700 border border-slate-600 rounded-lg text-xs font-semibold flex items-center gap-2 transition">
+                        <i class="fa-solid fa-language text-sky-400"></i>
+                        <span id="langLabel">English</span>
+                    </button>
+
+                    <button id="adminToggleBtn" onclick="toggleAdminModal()" class="px-3 py-1.5 bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/50 text-indigo-300 rounded-lg text-xs font-semibold flex items-center gap-2 transition">
+                        <i class="fa-solid fa-sliders"></i>
+                        <span data-i18n="adminPanel">रेट एवं मालिक सेटिंग्स (Admin)</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
+        
+        <div class="bg-slate-800/50 border border-slate-700/60 rounded-2xl p-4 sm:p-5">
+            <div class="grid grid-cols-4 gap-2 text-center text-xs sm:text-sm font-medium">
+                <div id="step-indicator-1" class="step-badge flex flex-col sm:flex-row items-center justify-center gap-2 p-2 rounded-xl bg-sky-500/20 text-sky-400 border border-sky-500/40">
+                    <span class="w-6 h-6 rounded-full bg-sky-500 text-slate-900 font-bold text-xs flex items-center justify-center">1</span>
+                    <span data-i18n="step1">1. अपलोड / Crop</span>
+                </div>
+                <div id="step-indicator-2" class="step-badge opacity-50 flex flex-col sm:flex-row items-center justify-center gap-2 p-2 rounded-xl bg-slate-700/30 text-slate-400 border border-transparent">
+                    <span class="w-6 h-6 rounded-full bg-slate-700 text-slate-300 font-bold text-xs flex items-center justify-center">2</span>
+                    <span data-i18n="step2">2. प्रिंट सेटिंग्स</span>
+                </div>
+                <div id="step-indicator-3" class="step-badge opacity-50 flex flex-col sm:flex-row items-center justify-center gap-2 p-2 rounded-xl bg-slate-700/30 text-slate-400 border border-transparent">
+                    <span class="w-6 h-6 rounded-full bg-slate-700 text-slate-300 font-bold text-xs flex items-center justify-center">3</span>
+                    <span data-i18n="step3">3. ऑनलाइन भुगतान</span>
+                </div>
+                <div id="step-indicator-4" class="step-badge opacity-50 flex flex-col sm:flex-row items-center justify-center gap-2 p-2 rounded-xl bg-slate-700/30 text-slate-400 border border-transparent">
+                    <span class="w-6 h-6 rounded-full bg-slate-700 text-slate-300 font-bold text-xs flex items-center justify-center">4</span>
+                    <span data-i18n="step4">4. प्रिंट स्थिति</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
+
+            <!-- Step 1: Upload File -->
+            <div id="step-content-1" class="step-section lg:col-span-12 flex flex-col gap-6">
+                <div class="bg-slate-800/40 border border-slate-700/80 rounded-2xl p-6 sm:p-10 text-center flex flex-col items-center justify-center min-h-[360px] border-dashed hover:border-sky-500 transition cursor-pointer relative" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                    <input type="file" id="fileInput" class="hidden" accept=".pdf, .jpg, .jpeg, .png, .doc, .docx" onchange="handleFileSelect(event)">
+                    
+                    <div class="w-20 h-20 bg-sky-500/10 text-sky-400 rounded-full flex items-center justify-center text-3xl mb-4 border border-sky-500/20">
+                        <i class="fa-solid fa-crop-simple"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2" data-i18n="uploadTitle">अपनी फाइल या आधार/पैन/फोटो अपलोड करें</h3>
+                    <p class="text-slate-400 text-sm max-w-md mb-6" data-i18n="uploadDesc">आधार कार्ड, आयुष्मान कार्ड, पासपोर्ट फोटो या PDF अपलोड करें। आप इसे क्रॉप (Crop) भी कर सकते हैं!</p>
+                    
+                    <button class="px-6 py-3 bg-sky-500 hover:bg-sky-600 text-slate-900 font-bold rounded-xl shadow-lg shadow-sky-500/25 transition flex items-center gap-2">
+                        <i class="fa-solid fa-folder-open"></i>
+                        <span data-i18n="browseBtn">फ़ाइल चुनें (Browse & Crop Image)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 2: Customization & Preview -->
+            <div id="step-content-2" class="step-section lg:col-span-12 hidden grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div class="lg:col-span-5 bg-slate-800/50 border border-slate-700/60 rounded-2xl p-5 flex flex-col gap-4">
+                    <div class="flex items-center justify-between border-b border-slate-700/60 pb-3">
+                        <h3 class="font-semibold text-slate-200 flex items-center gap-2">
+                            <i class="fa-solid fa-file-lines text-sky-400"></i>
+                            <span data-i18n="previewHeader">दस्तावेज़ / फोटो प्रीव्यू</span>
+                        </h3>
+                        <span id="fileNameBadge" class="text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded truncate max-w-[150px]">doc.pdf</span>
+                    </div>
+
+                    <!-- Image / Page Preview Container -->
+                    <div class="flex-1 min-h-[300px] bg-slate-950/60 rounded-xl border border-slate-800 flex items-center justify-center p-4 relative overflow-hidden">
+                        <div id="previewImageWrapper" class="hidden max-w-full max-h-[280px] flex justify-center">
+                            <img id="finalCroppedPreview" class="max-h-[260px] rounded border border-slate-700 shadow-xl object-contain" src="" alt="Cropped Result">
+                        </div>
+                        <div id="documentCanvas" class="bg-white text-slate-800 shadow-2xl rounded p-6 w-full max-w-[240px] aspect-[1/1.41] flex flex-col justify-between transition-all duration-300">
+                            <div class="space-y-2">
+                                <div id="previewColorHeader" class="h-4 bg-sky-600 rounded w-3/4"></div>
+                                <div class="h-2 bg-slate-300 rounded w-full"></div>
+                                <div class="h-2 bg-slate-300 rounded w-5/6"></div>
+                                <div class="h-2 bg-slate-300 rounded w-4/6"></div>
+                            </div>
+                            <div class="my-4 p-3 bg-slate-100 border border-dashed border-slate-300 rounded flex items-center justify-center gap-2 text-slate-400 text-xs">
+                                <i class="fa-solid fa-file-lines text-2xl text-slate-400"></i>
+                                <span>PDF/Doc Document</span>
+                            </div>
+                            <div class="space-y-1.5">
+                                <div class="h-2 bg-slate-300 rounded w-full"></div>
+                                <div class="h-2 bg-slate-300 rounded w-2/3"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <button id="reCropBtn" onclick="reCropImage()" class="hidden text-xs bg-slate-700 hover:bg-slate-600 text-sky-300 px-3 py-1.5 rounded-lg border border-slate-600 transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-crop-simple"></i>
+                            <span>फिर से Crop करें (Recrop)</span>
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 text-xs text-slate-400 bg-slate-900/50 p-3 rounded-xl border border-slate-800">
+                        <div><span data-i18n="detectedPages">कुल पेज:</span> <strong id="detectedPagesVal" class="text-white">1</strong></div>
+                        <div><span data-i18n="fileSize">फ़ाइल साइज़:</span> <strong id="fileSizeVal" class="text-white">1.2 MB</strong></div>
+                    </div>
+                </div>
+
+                <!-- Customization Form Right -->
+                <div class="lg:col-span-7 bg-slate-800/50 border border-slate-700/60 rounded-2xl p-5 flex flex-col justify-between gap-6">
+                    <div>
+                        <h3 class="font-semibold text-slate-200 border-b border-slate-700/60 pb-3 mb-5 flex items-center gap-2">
+                            <i class="fa-solid fa-sliders text-sky-400"></i>
+                            <span data-i18n="optionsHeader">प्रिंट विकल्प एवं रेट सेटिंग्स</span>
+                        </h3>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <label class="block text-slate-400 text-xs font-semibold mb-1" data-i18n="paperType">कागज / कार्ड का प्रकार (Paper Type)</label>
+                                <select id="paperTypeSelect" onchange="calculatePrice()" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-slate-200 focus:border-sky-500 focus:outline-none">
+                                    <option value="A4">A4 Normal Paper</option>
+                                    <option value="PHOTO">Photo Paper (Glossy)</option>
+                                    <option value="PVC">PVC Plastic Card / ID Card</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-slate-400 text-xs font-semibold mb-1" data-i18n="colorMode">रंग (Color Mode)</label>
+                                <select id="colorModeSelect" onchange="calculatePrice()" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-slate-200 focus:border-sky-500 focus:outline-none">
+                                    <option value="BW">Black & White (ब्लैक एंड व्हाइट)</option>
+                                    <option value="COLOR">Full Color (रंगीन)</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-slate-400 text-xs font-semibold mb-1" data-i18n="copiesCount">कॉपी की संख्या (Copies)</label>
+                                <div class="flex items-center">
+                                    <button onclick="adjustCopies(-1)" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-l-xl border border-slate-600">-</button>
+                                    <input type="number" id="copiesInput" value="1" min="1" max="100" onchange="calculatePrice()" class="w-full bg-slate-900 border-t border-b border-slate-700 py-2 text-center text-white focus:outline-none">
+                                    <button onclick="adjustCopies(1)" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-r-xl border border-slate-600">+</button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-slate-400 text-xs font-semibold mb-1" data-i18n="sidesMode">प्रिंट साइड्स (Sides)</label>
+                                <select id="sidesSelect" onchange="calculatePrice()" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-slate-200 focus:border-sky-500 focus:outline-none">
+                                    <option value="SINGLE">Single Sided (एक तरफा)</option>
+                                    <option value="DOUBLE">Both Sides (दोनों तरफ)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Price Summary -->
+                        <div class="mt-6 bg-slate-900/80 border border-sky-500/30 rounded-xl p-4 flex items-center justify-between">
+                            <div>
+                                <p class="text-xs text-slate-400" data-i18n="totalCostLabel">कुल अनुमानित शुल्क (Total Amount):</p>
+                                <div class="text-3xl font-extrabold text-sky-400 mt-0.5">₹<span id="computedPrice">5.00</span></div>
+                            </div>
+                            <div class="text-right text-xs text-slate-400">
+                                <div><span data-i18n="ratePerPg">दर प्रति यूनिट:</span> ₹<span id="ratePerPgVal">5</span></div>
+                                <div class="text-emerald-400 font-medium"><i class="fa-solid fa-circle-check text-[10px] mr-1"></i> Ready to Print</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between border-t border-slate-700/60 pt-4">
+                        <button onclick="goToStep(1)" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-xl text-xs font-medium transition">
+                            <i class="fa-solid fa-arrow-left mr-1"></i> <span data-i18n="backBtn">पीछे जाएं</span>
+                        </button>
+                        <button onclick="goToStep(3)" class="px-6 py-2.5 bg-sky-500 hover:bg-sky-600 text-slate-900 font-bold rounded-xl transition shadow-lg shadow-sky-500/20">
+                            <span data-i18n="proceedPayBtn">पेमेंट करें (Proceed to Pay)</span> <i class="fa-solid fa-arrow-right ml-1"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: Payment -->
+            <div id="step-content-3" class="step-section lg:col-span-12 hidden max-w-xl mx-auto w-full">
+                <div class="bg-slate-800/50 border border-slate-700/60 rounded-2xl p-6 flex flex-col items-center text-center gap-5">
+                    <div>
+                        <h3 class="text-xl font-bold text-white mb-1" data-i18n="payHeader">स्कैन करके भुगतान करें (Scan & Pay)</h3>
+                        <p class="text-xs text-slate-400" data-i18n="paySub">GPay, PhonePe, Paytm या किसी भी UPI ऐप से क्यूआर कोड स्कैन करें</p>
+                    </div>
+
+                    <div class="p-4 bg-white rounded-2xl shadow-xl relative group">
+                        <img id="upiQrImg" src="" alt="UPI QR Code" class="w-48 h-48 rounded-lg">
+                        <div class="mt-2 text-slate-900 font-bold text-lg">₹<span id="qrAmountDisplay">5.00</span></div>
+                    </div>
+
+                    <div class="w-full bg-slate-900/60 border border-slate-700/80 rounded-xl p-3 text-xs text-slate-300 flex items-center justify-between">
+                        <span class="flex items-center gap-2">
+                            <i class="fa-solid fa-spinner fa-spin text-sky-400"></i>
+                            <span data-i18n="waitingPay">भुगतान की पुष्टि का इंतज़ार है...</span>
+                        </span>
+                        <span class="font-mono text-amber-400" id="paymentTimer">04:59</span>
+                    </div>
+
+                    <button onclick="simulatePaymentSuccess()" class="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl transition shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <span data-i18n="simulatePaySuccess">[Demo] भुगतान सफल हुआ (Simulate Success)</span>
+                    </button>
+
+                    <button onclick="goToStep(2)" class="text-xs text-slate-400 hover:text-white underline">
+                        <span data-i18n="changeDetails">ऑप्शन बदलें (Change Settings)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 4: Status -->
+            <div id="step-content-4" class="step-section lg:col-span-12 hidden max-w-xl mx-auto w-full">
+                <div class="bg-slate-800/50 border border-slate-700/60 rounded-2xl p-6 text-center flex flex-col items-center gap-5">
+                    <div class="w-20 h-20 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center text-3xl border border-emerald-500/30 animate-pulse">
+                        <i class="fa-solid fa-print"></i>
+                    </div>
+
+                    <div>
+                        <h3 class="text-xl font-bold text-white mb-1" data-i18n="printSuccessTitle">भुगतान सफल! प्रिंट शुरू हो रहा है</h3>
+                        <p class="text-xs text-slate-400" data-i18n="printSuccessSub">कृपया प्रिंटर ट्रे से अपना प्रिंट प्राप्त करें</p>
+                    </div>
+
+                    <div class="w-full bg-slate-900 border border-slate-700 rounded-xl p-4 text-left text-xs space-y-2">
+                        <div class="flex justify-between border-b border-slate-800 pb-2">
+                            <span class="text-slate-400" data-i18n="orderId">ऑर्डर आईडी:</span>
+                            <span id="lblOrderId" class="font-mono text-sky-400 font-bold">#PRN-8921</span>
+                        </div>
+                        <div class="flex justify-between border-b border-slate-800 pb-2">
+                            <span class="text-slate-400" data-i18n="fileLbl">फ़ाइल:</span>
+                            <span id="lblFileName" class="text-white font-medium">Document.pdf</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-400" data-i18n="statusLbl">स्थिति:</span>
+                            <span class="text-emerald-400 font-bold flex items-center gap-1">
+                                <i class="fa-solid fa-circle-notch fa-spin"></i> Printing...
+                            </span>
+                        </div>
+                    </div>
+
+                    <button onclick="resetApp()" class="w-full py-3 bg-sky-500 hover:bg-sky-600 text-slate-900 font-bold rounded-xl transition">
+                        <i class="fa-solid fa-rotate-right mr-1"></i> <span data-i18n="newPrintBtn">नया डॉक्यूमेंट प्रिंट करें (New Print)</span>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- IMAGE CROPPER MODAL DIALOG -->
+    <div id="cropperModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="p-4 border-b border-slate-700 flex items-center justify-between">
+                <h3 class="font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-crop-simple text-sky-400"></i>
+                    <span>फोटो/डॉक्यूमेंट Crop करें (Photo & Document Cropper)</span>
+                </h3>
+                <button onclick="closeCropperModal()" class="text-slate-400 hover:text-white text-xl">&times;</button>
+            </div>
+
+            <!-- Crop Area -->
+            <div class="p-4 bg-slate-950 flex-1 overflow-hidden flex items-center justify-center">
+                <div class="max-h-[380px] w-full flex justify-center">
+                    <img id="cropperImageSrc" src="" alt="Image to Crop" class="max-w-full">
+                </div>
+            </div>
+
+            <!-- Crop Preset Toolbar -->
+            <div class="p-4 bg-slate-800 border-t border-slate-700 flex flex-wrap items-center justify-between gap-3">
+                <div class="flex flex-wrap items-center gap-2 text-xs">
+                    <span class="text-slate-400 font-medium">अनुपात (Aspect Ratio):</span>
+                    <button onclick="setCropRatio(NaN)" class="px-2.5 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg">Free</button>
+                    <button onclick="setCropRatio(1)" class="px-2.5 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg">Passport (1:1)</button>
+                    <button onclick="setCropRatio(85.6 / 54)" class="px-2.5 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg">Aadhar/ID Card</button>
+                    <button onclick="setCropRatio(1 / 1.414)" class="px-2.5 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg">A4 Page</button>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <button onclick="rotateCropper(-90)" class="p-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs" title="Rotate Left"><i class="fa-solid fa-rotate-left"></i></button>
+                    <button onclick="rotateCropper(90)" class="p-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs" title="Rotate Right"><i class="fa-solid fa-rotate-right"></i></button>
+                    <button onclick="applyCrop()" class="px-5 py-2 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl text-xs flex items-center gap-1.5">
+                        <i class="fa-solid fa-check"></i>
+                        <span>Crop सहेजें (Done)</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin / Cyber Cafe Owner Panel Drawer Modal -->
+    <div id="adminModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex justify-end">
+        <div class="bg-slate-800 w-full max-w-md h-full border-l border-slate-700 p-6 flex flex-col justify-between overflow-y-auto">
+            <div>
+                <div class="flex items-center justify-between border-b border-slate-700 pb-4 mb-5">
+                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-indigo-400"></i>
+                        <span>मालिक सेटिंग्स (Custom Pricing)</span>
+                    </h2>
+                    <button onclick="toggleAdminModal()" class="text-slate-400 hover:text-white text-xl">&times;</button>
+                </div>
+
+                <!-- Price Rates Setup Form -->
+                <div class="space-y-4 mb-6">
+                    <h3 class="text-xs uppercase tracking-wider font-bold text-indigo-400">दुकान के अनुसार रेट सेट करें (Set Your Rates)</h3>
+                    
+                    <div class="bg-slate-900 p-4 rounded-xl border border-slate-700 space-y-3 text-xs">
+                        <div class="flex items-center justify-between">
+                            <label for="rateBW" class="text-slate-300">B&W Rate (रु. प्रति पेज):</label>
+                            <input type="number" id="rateBW" value="5" class="w-20 bg-slate-800 border border-slate-600 rounded px-2.5 py-1 text-right text-white font-bold">
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <label for="rateColor" class="text-slate-300">Color Rate (रु. प्रति पेज):</label>
+                            <input type="number" id="rateColor" value="15" class="w-20 bg-slate-800 border border-slate-600 rounded px-2.5 py-1 text-right text-white font-bold">
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <label for="ratePhoto" class="text-slate-300">Photo Paper (रु. प्रति शीट):</label>
+                            <input type="number" id="ratePhoto" value="20" class="w-20 bg-slate-800 border border-slate-600 rounded px-2.5 py-1 text-right text-white font-bold">
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <label for="ratePVC" class="text-slate-300">PVC ID Card (रु. प्रति कार्ड):</label>
+                            <input type="number" id="ratePVC" value="30" class="w-20 bg-slate-800 border border-slate-600 rounded px-2.5 py-1 text-right text-white font-bold">
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <label for="rateBothSideDiscount" class="text-slate-300">Both Sides Extra Discount (₹):</label>
+                            <input type="number" id="rateBothSideDiscount" value="2" class="w-20 bg-slate-800 border border-slate-600 rounded px-2.5 py-1 text-right text-white font-bold">
+                        </div>
+                        <button onclick="saveRates()" class="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-semibold text-xs mt-2 transition shadow">
+                            नया रेट सेव करें (Save Rates)
+                        </button>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <h3 class="text-xs uppercase tracking-wider font-bold text-indigo-400">हाल के ऑर्डर (Recent Print Queue)</h3>
+                    <div id="adminOrderList" class="space-y-2 max-h-[220px] overflow-y-auto pr-1"></div>
+                </div>
+            </div>
+
+            <div class="text-xs text-slate-500 text-center border-t border-slate-700 pt-4">
+                Smart PrintExpress Kiosk System v1.1
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentLanguage = 'hi';
+        let currentStep = 1;
+        let cropper = null;
+        let originalUploadedImage = null;
+
+        let fileData = {
+            name: '',
+            size: '0 MB',
+            pages: 1,
+            isImage: false,
+            croppedDataUrl: null
+        };
+
+        let rates = {
+            BW: 5,
+            COLOR: 15,
+            PHOTO: 20,
+            PVC: 30,
+            BOTH_SIDE_DISCOUNT: 2
+        };
+
+        let ordersQueue = [];
+
+        const translations = {
+            hi: {
+                adminPanel: "रेट एवं मालिक सेटिंग्स (Admin)",
+                step1: "1. अपलोड / Crop",
+                step2: "2. प्रिंट सेटिंग्स",
+                step3: "3. ऑनलाइन भुगतान",
+                step4: "4. प्रिंट स्थिति",
+                uploadTitle: "अपनी फाइल या आधार/पैन/फोटो अपलोड करें",
+                uploadDesc: "आधार कार्ड, आयुष्मान कार्ड, पासपोर्ट फोटो या PDF अपलोड करें। आप इसे क्रॉप (Crop) भी कर सकते हैं!",
+                browseBtn: "फ़ाइल चुनें (Browse & Crop Image)",
+                previewHeader: "दस्तावेज़ / फोटो प्रीव्यू",
+                detectedPages: "कुल पेज:",
+                fileSize: "फ़ाइल साइज़:",
+                optionsHeader: "प्रिंट विकल्प एवं रेट सेटिंग्स",
+                paperType: "कागज / कार्ड का प्रकार (Paper Type)",
+                colorMode: "रंग (Color Mode)",
+                copiesCount: "कॉपी की संख्या (Copies)",
+                sidesMode: "प्रिंट साइड्स (Sides)",
+                totalCostLabel: "कुल अनुमानित शुल्क (Total Amount):",
+                ratePerPg: "दर प्रति यूनिट:",
+                backBtn: "पीछे जाएं",
+                proceedPayBtn: "पेमेंट करें (Proceed to Pay)",
+                payHeader: "स्कैन करके भुगतान करें (Scan & Pay)",
+                paySub: "GPay, PhonePe, Paytm या किसी भी UPI ऐप से क्यूआर कोड स्कैन करें",
+                waitingPay: "भुगतान की पुष्टि का इंतज़ार है...",
+                simulatePaySuccess: "[Demo] भुगतान सफल हुआ (Simulate Success)",
+                changeDetails: "ऑप्शन बदलें (Change Settings)",
+                printSuccessTitle: "भुगतान सफल! प्रिंट शुरू हो रहा है",
+                printSuccessSub: "कृपया प्रिंटर ट्रे से अपना प्रिंट प्राप्त करें",
+                orderId: "ऑर्डर आईडी:",
+                fileLbl: "फ़ाइल:",
+                statusLbl: "स्थिति:",
+                newPrintBtn: "नया डॉक्यूमेंट प्रिंट करें"
+            },
+            en: {
+                adminPanel: "Admin & Rate Settings",
+                step1: "1. Upload & Crop",
+                step2: "2. Print Options",
+                step3: "3. Online Payment",
+                step4: "4. Print Status",
+                uploadTitle: "Upload Document, Aadhar, PAN or Photo",
+                uploadDesc: "Upload Aadhar, Ayushman, Passport Photos or PDF. Includes built-in Cropper!",
+                browseBtn: "Browse File & Crop Image",
+                previewHeader: "Document / Photo Preview",
+                detectedPages: "Total Pages:",
+                fileSize: "File Size:",
+                optionsHeader: "Select Print Options & Rates",
+                paperType: "Paper / Card Type",
+                colorMode: "Color Mode",
+                copiesCount: "Number of Copies",
+                sidesMode: "Print Sides",
+                totalCostLabel: "Total Amount:",
+                ratePerPg: "Unit Rate:",
+                backBtn: "Back",
+                proceedPayBtn: "Proceed to Pay",
+                payHeader: "Scan & Pay via UPI",
+                paySub: "Scan QR code using GPay, PhonePe, Paytm or any UPI App",
+                waitingPay: "Waiting for payment verification...",
+                simulatePaySuccess: "[Demo] Simulate Payment Success",
+                changeDetails: "Change Settings",
+                printSuccessTitle: "Payment Received! Printing Started",
+                printSuccessSub: "Please collect your printout from the printer tray",
+                orderId: "Order ID:",
+                fileLbl: "File:",
+                statusLbl: "Status:",
+                newPrintBtn: "Print New Document"
+            }
+        };
+
+        function toggleLanguage() {
+            currentLanguage = currentLanguage === 'hi' ? 'en' : 'hi';
+            document.getElementById('langLabel').textContent = currentLanguage === 'hi' ? 'English' : 'हिंदी';
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (translations[currentLanguage][key]) {
+                    el.textContent = translations[currentLanguage][key];
+                }
+            });
+        }
+
+        function goToStep(step) {
+            currentStep = step;
+            for (let i = 1; i <= 4; i++) {
+                const badge = document.getElementById(`step-indicator-${i}`);
+                const content = document.getElementById(`step-content-${i}`);
+                if (i === step) {
+                    badge.classList.remove('opacity-50', 'bg-slate-700/30', 'text-slate-400', 'border-transparent');
+                    badge.classList.add('bg-sky-500/20', 'text-sky-400', 'border-sky-500/40');
+                    content.classList.remove('hidden');
+                } else {
+                    badge.classList.add('opacity-50');
+                    badge.classList.remove('bg-sky-500/20', 'text-sky-400', 'border-sky-500/40');
+                    content.classList.add('hidden');
+                }
+            }
+        }
+
+        function handleFileSelect(event) {
+            const files = event.target.files || event.dataTransfer.files;
+            if (!files.length) return;
+
+            const file = files[0];
+            fileData.name = file.name;
+            fileData.size = (file.size / (1024 * 1024)).toFixed(2) + ' MB';
+            fileData.pages = 1;
+            fileData.isImage = file.type.startsWith('image/');
+
+            document.getElementById('fileNameBadge').textContent = fileData.name;
+            document.getElementById('detectedPagesVal').textContent = fileData.pages;
+            document.getElementById('fileSizeVal').textContent = fileData.size;
+
+            if (fileData.isImage) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    originalUploadedImage = e.target.result;
+                    openCropperModal(e.target.result);
+                };
+                reader.readAsDataURL(file);
+            } else {
+                document.getElementById('previewImageWrapper').classList.add('hidden');
+                document.getElementById('documentCanvas').classList.remove('hidden');
+                document.getElementById('reCropBtn').classList.add('hidden');
+                calculatePrice();
+                goToStep(2);
+            }
+        }
+
+        function openCropperModal(imageSrc) {
+            const cropperModal = document.getElementById('cropperModal');
+            const cropperImg = document.getElementById('cropperImageSrc');
+            cropperImg.src = imageSrc;
+            cropperModal.classList.remove('hidden');
+
+            if (cropper) {
+                cropper.destroy();
+            }
+
+            setTimeout(() => {
+                cropper = new Cropper(cropperImg, {
+                    aspectRatio: NaN, // Free ratio default
+                    viewMode: 1,
+                    background: false,
+                    autoCropArea: 0.9,
+                });
+            }, 150);
+        }
+
+        function setCropRatio(ratio) {
+            if (cropper) {
+                cropper.setAspectRatio(ratio);
+            }
+        }
+
+        function rotateCropper(degree) {
+            if (cropper) {
+                cropper.rotate(degree);
+            }
+        }
+
+        function applyCrop() {
+            if (!cropper) return;
+            const canvas = cropper.getCroppedCanvas();
+            fileData.croppedDataUrl = canvas.toDataURL('image/png');
+
+            document.getElementById('finalCroppedPreview').src = fileData.croppedDataUrl;
+            document.getElementById('previewImageWrapper').classList.remove('hidden');
+            document.getElementById('documentCanvas').classList.add('hidden');
+            document.getElementById('reCropBtn').classList.remove('hidden');
+
+            closeCropperModal();
+            calculatePrice();
+            goToStep(2);
+        }
+
+        function reCropImage() {
+            if (originalUploadedImage) {
+                openCropperModal(originalUploadedImage);
+            }
+        }
+
+        function closeCropperModal() {
+            document.getElementById('cropperModal').classList.add('hidden');
+            if (cropper) {
+                cropper.destroy();
+                cropper = null;
+            }
+        }
+
+        function calculatePrice() {
+            const paperType = document.getElementById('paperTypeSelect').value;
+            const colorMode = document.getElementById('colorModeSelect').value;
+            const sidesMode = document.getElementById('sidesSelect').value;
+            const copies = parseInt(document.getElementById('copiesInput').value) || 1;
+
+            let rate = rates.BW;
+            if (paperType === 'PVC') {
+                rate = rates.PVC;
+            } else if (paperType === 'PHOTO') {
+                rate = rates.PHOTO;
+            } else if (colorMode === 'COLOR') {
+                rate = rates.COLOR;
+            }
+
+            let pageMultiplier = fileData.pages;
+            let totalPrice = rate * pageMultiplier * copies;
+
+            if (sidesMode === 'DOUBLE' && totalPrice > rates.BOTH_SIDE_DISCOUNT) {
+                totalPrice -= rates.BOTH_SIDE_DISCOUNT;
+            }
+
+            document.getElementById('ratePerPgVal').textContent = rate;
+            document.getElementById('computedPrice').textContent = totalPrice.toFixed(2);
+            document.getElementById('qrAmountDisplay').textContent = totalPrice.toFixed(2);
+
+            const upiUrl = `upi://pay?pa=cybercafe@upi&pn=CyberCafe&am=${totalPrice.toFixed(2)}&cu=INR`;
+            document.getElementById('upiQrImg').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiUrl)}`;
+        }
+
+        function adjustCopies(delta) {
+            const input = document.getElementById('copiesInput');
+            let val = parseInt(input.value) + delta;
+            if (val < 1) val = 1;
+            input.value = val;
+            calculatePrice();
+        }
+
+        function simulatePaymentSuccess() {
+            const orderId = '#PRN-' + Math.floor(1000 + Math.random() * 9000);
+            const amount = document.getElementById('computedPrice').textContent;
+
+            document.getElementById('lblOrderId').textContent = orderId;
+            document.getElementById('lblFileName').textContent = fileData.name;
+
+            ordersQueue.unshift({
+                id: orderId,
+                file: fileData.name,
+                amount: '₹' + amount,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                status: 'Printing'
+            });
+
+            renderAdminOrders();
+            goToStep(4);
+        }
+
+        function resetApp() {
+            document.getElementById('fileInput').value = '';
+            fileData = { name: '', size: '0 MB', pages: 1, isImage: false, croppedDataUrl: null };
+            document.getElementById('copiesInput').value = 1;
+            goToStep(1);
+        }
+
+        function toggleAdminModal() {
+            document.getElementById('adminModal').classList.toggle('hidden');
+        }
+
+        function saveRates() {
+            rates.BW = parseFloat(document.getElementById('rateBW').value) || 5;
+            rates.COLOR = parseFloat(document.getElementById('rateColor').value) || 15;
+            rates.PHOTO = parseFloat(document.getElementById('ratePhoto').value) || 20;
+            rates.PVC = parseFloat(document.getElementById('ratePVC').value) || 30;
+            rates.BOTH_SIDE_DISCOUNT = parseFloat(document.getElementById('rateBothSideDiscount').value) || 2;
+            
+            calculatePrice();
+            alert('नए रेट सफलतापूर्वक सेव हो गए! (Custom rates saved successfully)');
+        }
+
+        function renderAdminOrders() {
+            const container = document.getElementById('adminOrderList');
+            if (ordersQueue.length === 0) {
+                container.innerHTML = `<div class="text-xs text-slate-500 italic p-2 text-center">कोई ऑर्डर नहीं है।</div>`;
+                return;
+            }
+
+            container.innerHTML = ordersQueue.map(item => `
+                <div class="bg-slate-900 border border-slate-700 p-3 rounded-xl flex items-center justify-between text-xs">
+                    <div>
+                        <div class="font-bold text-white">${item.id} <span class="text-slate-400 text-[10px]">(${item.time})</span></div>
+                        <div class="text-slate-400 truncate max-w-[150px]">${item.file}</div>
+                        <div class="text-emerald-400 font-semibold mt-0.5">${item.amount}</div>
+                    </div>
+                    <span class="px-2 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded font-semibold text-[10px]">
+                        ${item.status}
+                    </span>
+                </div>
+            `).join('');
+        }
+
+        // Drag & Drop
+        const dropZone = document.getElementById('dropZone');
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropZone.classList.add('border-sky-500', 'bg-sky-500/10');
+            }, false);
+        });
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('border-sky-500', 'bg-sky-500/10');
+            }, false);
+        });
+        dropZone.addEventListener('drop', handleFileSelect, false);
+
+        window.onload = function() {
+            renderAdminOrders();
+        }
+    </script>
+</body>
+</html>
